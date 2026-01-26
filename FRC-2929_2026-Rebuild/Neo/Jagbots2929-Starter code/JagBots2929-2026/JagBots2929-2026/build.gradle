@@ -1,0 +1,80 @@
+plugins {
+    id "java"
+    id "edu.wpi.first.GradleRIO" version "2025.1.1"
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+def ROBOT_MAIN_CLASS = "frc.robot.Main"
+
+// Define my targets (RoboRIO) and artifacts (deployable files)
+deploy {
+    targets {
+        roborio(getTargetTypeClass('RoboRIO')) {
+            team = 2929
+        }
+    }
+    artifacts {
+        frcJava(getFRCJavaArtifact('FRCJava')) {
+        }
+        frcStaticFileDeploy(getArtifactTypeClass('FileTreeArtifact')) {
+            files = project.fileTree('src/main/deploy')
+            directory = '/home/lvuser/deploy'
+        }
+    }
+}
+
+def deployArtifact = deploy.targets.roborio.artifacts.frcJava
+
+wpi.java.configureExecutableTasks(jar)
+wpi.java.configureTestTasks(test)
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation wpi.java.deps.wpilib()
+    implementation wpi.java.vendor.java()
+
+    roborioDebug wpi.java.deps.wpilibJniDebug(wpi.platforms.roborio)
+    roborioDebug wpi.java.vendor.jniDebug(wpi.platforms.roborio)
+
+    roborioRelease wpi.java.deps.wpilibJniRelease(wpi.platforms.roborio)
+    roborioRelease wpi.java.vendor.jniRelease(wpi.platforms.roborio)
+
+    nativeDebug wpi.java.deps.wpilibJniDebug(wpi.platforms.desktop)
+    nativeDebug wpi.java.vendor.jniDebug(wpi.platforms.desktop)
+    simulationDebug wpi.sim.enableDebug()
+
+    nativeRelease wpi.java.deps.wpilibJniRelease(wpi.platforms.desktop)
+    nativeRelease wpi.java.vendor.jniRelease(wpi.platforms.desktop)
+    simulationRelease wpi.sim.enableRelease()
+
+    testImplementation 'junit:junit:4.13.1'
+}
+
+test {
+    useJUnit()
+    systemProperty 'junit.jupiter.extensions.autodetection.enabled', 'true'
+}
+
+// Simulation configuration
+wpi.sim.addGui().defaultEnabled = true
+wpi.sim.addDriverstation()
+
+// Setting up my Jar File
+jar {
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    from sourceSets.main.allSource
+    manifest edu.wpi.first.gradlerio.GradleRIOPlugin.javaManifest(ROBOT_MAIN_CLASS)
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+// Configure wrapper
+wrapper {
+    gradleVersion = '8.5'
+}
